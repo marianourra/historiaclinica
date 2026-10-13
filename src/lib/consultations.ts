@@ -10,7 +10,7 @@ export const CONSULTATION_TYPES: {
   {
     id: "lactante",
     label: "Control de salud lactante",
-    description: "Seguimiento de crecimiento en el primer año de vida.",
+    description: "Seguimiento de crecimiento hasta los 2 años de vida.",
   },
   {
     id: "mayores",

@@ -140,13 +140,13 @@ export function PatientDetail() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to={`/pacientes/${patient.id}/datos`} className="btn-ghost">
+            <Link to={`/pacientes/${patient.id}/datos`} className="btn-ghost btn-equal">
               Datos personales
             </Link>
-            <Link to={`/pacientes/${patient.id}/crecimiento`} className="btn-ghost">
+            <Link to={`/pacientes/${patient.id}/crecimiento`} className="btn-ghost btn-equal">
               Gráficos de crecimiento
             </Link>
-            <Link to={`/pacientes/${patient.id}/consultas/nueva`} className="btn-primary">
+            <Link to={`/pacientes/${patient.id}/consultas/nueva`} className="btn-primary btn-equal">
               Nueva consulta
             </Link>
           </div>
