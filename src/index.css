@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Fraunces", Georgia, serif;
+  --color-ink: #16343a;
+  --color-muted: #5c7176;
+  --color-paper: #f4f1ea;
+  --color-card: #fffcf7;
+  --color-line: #dfe6e3;
+  --color-teal: #1b6b6a;
+  --color-teal-dark: #124e4d;
+  --color-sage: #cfe4d8;
+  --color-gold: #c9a227;
+  --color-danger: #b42318;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 500px at 10% -10%, #dff3ec 0%, transparent 50%),
+    radial-gradient(900px 400px at 100% 0%, #f3e7c8 0%, transparent 42%),
+    var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.field {
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-line);
+  background: #fff;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--color-ink);
+  outline: none;
+}
+
+.field:focus {
+  border-color: var(--color-teal);
+  box-shadow: 0 0 0 4px rgb(27 107 106 / 0.1);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.btn-primary,
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--color-teal);
+  color: #fff;
+  border: 0;
+}
+
+.btn-primary:hover {
+  background: var(--color-teal-dark);
+}
+
+.btn-ghost {
+  border: 1px solid var(--color-line);
+  background: #fff;
+  color: var(--color-ink);
+}
+
+.btn-ghost:hover {
+  background: rgb(207 228 216 / 0.45);
+}
+
+.btn-primary:disabled,
+.btn-ghost:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.card {
+  border-radius: 1rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-card);
+  box-shadow: 0 18px 40px -28px rgb(18 78 77 / 0.45);
+}
+
+.type-option {
+  cursor: pointer;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.type-option:hover {
+  border-color: rgb(27 107 106 / 0.45);
+  background: #fff;
+  box-shadow: 0 18px 36px -12px rgb(18 78 77 / 0.35);
+  transform: translateY(-2px);
+}
