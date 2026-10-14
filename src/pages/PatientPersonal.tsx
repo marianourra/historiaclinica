@@ -1,7 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useParams } from "react-router-dom";
 import { BackLink } from "../components/BackLink";
 import { formatDate, fullName, sexLabel } from "../lib/format";
+import {
+  patientPhotoUrl,
+  removePatientPhoto,
+  uploadPatientPhoto,
+} from "../lib/patientPhoto";
 import { supabase } from "../lib/supabase";
 import type { Patient } from "../lib/types";
 
@@ -17,6 +22,10 @@ type PersonalForm = {
   address: string;
   blood_type: string;
   insurance: string;
+  mother_name: string;
+  mother_phone: string;
+  father_name: string;
+  father_phone: string;
   notes: string;
 };
 
@@ -33,15 +42,23 @@ function toForm(patient: Patient): PersonalForm {
     address: patient.address ?? "",
     blood_type: patient.blood_type ?? "",
     insurance: patient.insurance ?? "",
+    mother_name: patient.mother_name ?? "",
+    mother_phone: patient.mother_phone ?? "",
+    father_name: patient.father_name ?? "",
+    father_phone: patient.father_phone ?? "",
     notes: patient.notes ?? "",
   };
 }
 
 export function PatientPersonal() {
   const { patientId } = useParams();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [form, setForm] = useState<PersonalForm | null>(null);
   const [editing, setEditing] = useState(false);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [removePhoto, setRemovePhoto] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -70,6 +87,16 @@ export function PatientPersonal() {
     };
   }, [patientId]);
 
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview(null);
+      return;
+    }
+    const url = URL.createObjectURL(photoFile);
+    setPhotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photoFile]);
+
   function update(key: keyof PersonalForm, value: string) {
     setSaved(false);
     setForm((current) => (current ? { ...current, [key]: value } : current));
@@ -78,8 +105,27 @@ export function PatientPersonal() {
   function cancel() {
     if (patient) setForm(toForm(patient));
     setEditing(false);
+    setPhotoFile(null);
+    setRemovePhoto(false);
     setError(null);
     setSaved(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function onPhotoPick(file: File | null) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("La foto debe ser una imagen (JPG, PNG o WEBP).");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("La foto no puede superar los 5 MB.");
+      return;
+    }
+    setError(null);
+    setSaved(false);
+    setRemovePhoto(false);
+    setPhotoFile(file);
   }
 
   async function onSubmit(event: FormEvent) {
@@ -88,39 +134,72 @@ export function PatientPersonal() {
     setError(null);
     setSaved(false);
     setPending(true);
-    const { data, error: saveError } = await supabase
-      .from("patients")
-      .update({
-        first_name: form.first_name.trim(),
-        last_name: form.last_name.trim(),
-        document_type: form.document_type,
-        document_number: form.document_number.trim(),
-        birth_date: form.birth_date || null,
-        sex: form.sex || null,
-        phone: form.phone.trim() || null,
-        email: form.email.trim() || null,
-        address: form.address.trim() || null,
-        blood_type: form.blood_type.trim() || null,
-        insurance: form.insurance.trim() || null,
-        notes: form.notes.trim() || null,
-      })
-      .eq("id", patient.id)
-      .select("*")
-      .single();
-    setPending(false);
-    if (saveError) {
-      setError(saveError.message);
-      return;
+
+    let nextPhotoPath = patient.photo_path;
+    try {
+      if (removePhoto && patient.photo_path) {
+        await removePatientPhoto(patient.photo_path);
+        nextPhotoPath = null;
+      }
+      if (photoFile) {
+        if (patient.photo_path && patient.photo_path !== nextPhotoPath) {
+          try {
+            await removePatientPhoto(patient.photo_path);
+          } catch {
+            /* old file may already be replaced by upsert */
+          }
+        }
+        nextPhotoPath = await uploadPatientPhoto(patient.id, photoFile);
+      }
+
+      const { data, error: saveError } = await supabase
+        .from("patients")
+        .update({
+          first_name: form.first_name.trim(),
+          last_name: form.last_name.trim(),
+          document_type: form.document_type,
+          document_number: form.document_number.trim(),
+          birth_date: form.birth_date || null,
+          sex: form.sex || null,
+          phone: form.phone.trim() || null,
+          email: form.email.trim() || null,
+          address: form.address.trim() || null,
+          blood_type: form.blood_type.trim() || null,
+          insurance: form.insurance.trim() || null,
+          mother_name: form.mother_name.trim() || null,
+          mother_phone: form.mother_phone.trim() || null,
+          father_name: form.father_name.trim() || null,
+          father_phone: form.father_phone.trim() || null,
+          notes: form.notes.trim() || null,
+          photo_path: nextPhotoPath,
+        })
+        .eq("id", patient.id)
+        .select("*")
+        .single();
+
+      if (saveError) throw new Error(saveError.message);
+
+      const updated = data as Patient;
+      setPatient(updated);
+      setForm(toForm(updated));
+      setPhotoFile(null);
+      setRemovePhoto(false);
+      setEditing(false);
+      setSaved(true);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudieron guardar los datos.");
+    } finally {
+      setPending(false);
     }
-    const updated = data as Patient;
-    setPatient(updated);
-    setForm(toForm(updated));
-    setEditing(false);
-    setSaved(true);
   }
 
   if (loading) return <p className="text-muted">Cargando datos personales...</p>;
   if (!patient || !form) return <p>{error || "No encontramos este paciente."}</p>;
+
+  const currentPhoto =
+    photoPreview ||
+    (!removePhoto ? patientPhotoUrl(patient.photo_path) : null);
 
   return (
     <form onSubmit={onSubmit} className="mx-auto max-w-3xl">
@@ -141,7 +220,51 @@ export function PatientPersonal() {
         )}
       </div>
 
-      <div className="card mt-6 grid gap-4 p-6 sm:grid-cols-2">
+      <div className="card mt-6 p-6">
+        <p className="field-label">Foto del paciente</p>
+        <div className="mt-2 flex flex-wrap items-center gap-4">
+          <div className="grid h-28 w-28 place-items-center overflow-hidden rounded-2xl border border-line bg-sage/40">
+            {currentPhoto ? (
+              <img
+                src={currentPhoto}
+                alt={`Foto de ${patient.first_name}`}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="px-2 text-center text-xs text-muted">Sin foto</span>
+            )}
+          </div>
+          {editing && (
+            <div className="flex flex-col gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="text-sm text-muted file:mr-3 file:rounded-lg file:border-0 file:bg-teal file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
+                onChange={(e) => onPhotoPick(e.target.files?.[0] ?? null)}
+              />
+              {(patient.photo_path || photoFile) && !removePhoto && (
+                <button
+                  type="button"
+                  className="btn-ghost self-start text-danger"
+                  onClick={() => {
+                    setPhotoFile(null);
+                    setRemovePhoto(true);
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                  }}
+                >
+                  Quitar foto
+                </button>
+              )}
+              {removePhoto && (
+                <p className="text-xs text-muted">La foto se eliminará al guardar.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card mt-4 grid gap-4 p-6 sm:grid-cols-2">
         <Field label="Nombre" editing={editing} value={form.first_name} display={patient.first_name} onChange={(v) => update("first_name", v)} required />
         <Field label="Apellido" editing={editing} value={form.last_name} display={patient.last_name} onChange={(v) => update("last_name", v)} required />
         <Field
@@ -181,6 +304,41 @@ export function PatientPersonal() {
         <Field label="Grupo sanguíneo" editing={editing} value={form.blood_type} display={patient.blood_type} onChange={(v) => update("blood_type", v)} />
         <Field label="Obra social / cobertura" editing={editing} value={form.insurance} display={patient.insurance} onChange={(v) => update("insurance", v)} />
         <Field label="Domicilio" editing={editing} value={form.address} display={patient.address} wide onChange={(v) => update("address", v)} />
+      </div>
+
+      <div className="card mt-4 grid gap-4 p-6 sm:grid-cols-2">
+        <h2 className="font-display text-xl sm:col-span-2">Familiares</h2>
+        <Field
+          label="Nombre de la madre"
+          editing={editing}
+          value={form.mother_name}
+          display={patient.mother_name}
+          onChange={(v) => update("mother_name", v)}
+        />
+        <Field
+          label="Teléfono de la madre"
+          editing={editing}
+          value={form.mother_phone}
+          display={patient.mother_phone}
+          onChange={(v) => update("mother_phone", v)}
+        />
+        <Field
+          label="Nombre del padre"
+          editing={editing}
+          value={form.father_name}
+          display={patient.father_name}
+          onChange={(v) => update("father_name", v)}
+        />
+        <Field
+          label="Teléfono del padre"
+          editing={editing}
+          value={form.father_phone}
+          display={patient.father_phone}
+          onChange={(v) => update("father_phone", v)}
+        />
+      </div>
+
+      <div className="card mt-4 grid gap-4 p-6">
         <Field label="Notas" editing={editing} value={form.notes} display={patient.notes} kind="textarea" wide onChange={(v) => update("notes", v)} />
       </div>
 

@@ -14,6 +14,7 @@ import {
   fullName,
   sexLabel,
 } from "../lib/format";
+import { patientPhotoUrl } from "../lib/patientPhoto";
 import { printClinicalHistory } from "../lib/printHistory";
 
 export function PatientDetail() {
@@ -123,21 +124,30 @@ export function PatientDetail() {
       <section>
         <BackLink to="/">← Pacientes</BackLink>
         <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-          <div>
-            <h1 className="font-display text-4xl">
-              {fullName(patient.first_name, patient.last_name)}
-            </h1>
-            <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
-              <span>
-                {patient.document_type} {patient.document_number}
-              </span>
-              <span aria-hidden="true">·</span>
-              <span>{sexLabel(patient.sex)}</span>
-              <span aria-hidden="true">·</span>
-              <span>{age != null ? `${age} años` : "Edad no informada"}</span>
-              <span aria-hidden="true">·</span>
-              <span>{formatDate(patient.birth_date)}</span>
-            </p>
+          <div className="flex min-w-0 items-start gap-4">
+            {patientPhotoUrl(patient.photo_path) ? (
+              <img
+                src={patientPhotoUrl(patient.photo_path)!}
+                alt={`Foto de ${patient.first_name}`}
+                className="h-16 w-16 shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
+              />
+            ) : null}
+            <div className="min-w-0">
+              <h1 className="font-display text-4xl">
+                {fullName(patient.first_name, patient.last_name)}
+              </h1>
+              <p className="mt-3 flex flex-wrap items-baseline gap-x-2 text-sm text-muted">
+                <span>
+                  {patient.document_type} {patient.document_number}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>{sexLabel(patient.sex)}</span>
+                <span aria-hidden="true">·</span>
+                <span>{age != null ? `${age} años` : "Edad no informada"}</span>
+                <span aria-hidden="true">·</span>
+                <span>{formatDate(patient.birth_date)}</span>
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link to={`/pacientes/${patient.id}/datos`} className="btn-ghost btn-equal">

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link, Navigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { authErrorMessage } from "../lib/authErrors";
 
@@ -75,12 +75,6 @@ export function Login() {
         <button className="btn-primary w-full" disabled={pending}>
           {pending ? "Ingresando..." : "Entrar al consultorio"}
         </button>
-        <p className="mt-5 text-center text-sm text-muted">
-          ¿Todavía no tenés cuenta?{" "}
-          <Link to="/registro" className="font-semibold text-teal">
-            Crear usuario médico
-          </Link>
-        </p>
       </form>
     </div>
   );

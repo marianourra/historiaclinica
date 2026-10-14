@@ -4,6 +4,13 @@ export type Profile = {
   username: string | null;
   specialty: string | null;
   license_number: string | null;
+  is_admin: boolean;
+};
+
+export type DoctorAccount = Profile & {
+  email: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type Patient = {
@@ -20,6 +27,11 @@ export type Patient = {
   address: string | null;
   blood_type: string | null;
   insurance: string | null;
+  photo_path: string | null;
+  mother_name: string | null;
+  mother_phone: string | null;
+  father_name: string | null;
+  father_phone: string | null;
   allergies: string | null;
   medical_history: string | null;
   current_medications: string | null;

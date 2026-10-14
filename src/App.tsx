@@ -1,10 +1,12 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import { AdminRoute } from "./components/AdminRoute";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ConsultationDetail } from "./pages/ConsultationDetail";
 import { ConsultationForm } from "./pages/ConsultationForm";
 import { Login } from "./pages/Login";
 import { GrowthCharts } from "./pages/GrowthCharts";
+import { Parametrization } from "./pages/Parametrization";
 import { PatientDetail } from "./pages/PatientDetail";
 import { PatientPersonal } from "./pages/PatientPersonal";
 import { PatientForm } from "./pages/PatientForm";
@@ -35,6 +37,14 @@ export default function App() {
         />
         <Route path="consultas/:consultationId" element={<ConsultationDetail />} />
         <Route path="consultas/:consultationId/editar" element={<ConsultationForm />} />
+        <Route
+          path="admin/parametrizacion"
+          element={
+            <AdminRoute>
+              <Parametrization />
+            </AdminRoute>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
