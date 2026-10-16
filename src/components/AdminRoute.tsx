@@ -3,14 +3,10 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function AdminRoute({ children }: { children: ReactNode }) {
-  const { profile, loading } = useAuth();
+  const { profile, loading, profileLoading } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="grid min-h-[40vh] place-items-center text-muted">
-        Cargando...
-      </div>
-    );
+  if (loading || (!profile && profileLoading)) {
+    return null;
   }
 
   if (!profile?.is_admin) return <Navigate to="/" replace />;

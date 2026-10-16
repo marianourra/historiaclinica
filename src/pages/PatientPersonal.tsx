@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import { BackLink } from "../components/BackLink";
 import { formatDate, fullName, sexLabel } from "../lib/format";
 import {
+  clearAllPatientPhotos,
   patientPhotoUrl,
-  removePatientPhoto,
   uploadPatientPhoto,
 } from "../lib/patientPhoto";
 import { supabase } from "../lib/supabase";
@@ -137,19 +137,15 @@ export function PatientPersonal() {
 
     let nextPhotoPath = patient.photo_path;
     try {
-      if (removePhoto && patient.photo_path) {
-        await removePatientPhoto(patient.photo_path);
-        nextPhotoPath = null;
-      }
       if (photoFile) {
-        if (patient.photo_path && patient.photo_path !== nextPhotoPath) {
-          try {
-            await removePatientPhoto(patient.photo_path);
-          } catch {
-            /* old file may already be replaced by upsert */
-          }
-        }
-        nextPhotoPath = await uploadPatientPhoto(patient.id, photoFile);
+        nextPhotoPath = await uploadPatientPhoto(
+          patient.id,
+          photoFile,
+          patient.photo_path,
+        );
+      } else if (removePhoto && patient.photo_path) {
+        await clearAllPatientPhotos(patient.id);
+        nextPhotoPath = null;
       }
 
       const { data, error: saveError } = await supabase

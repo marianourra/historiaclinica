@@ -7,8 +7,8 @@ import { consultationTypeLabel } from "../lib/consultations";
 import { supabase } from "../lib/supabase";
 import type { Consultation, Patient } from "../lib/types";
 import {
-  ageFromBirthDate,
   canEditConsultation,
+  formatAge,
   formatDate,
   formatDateTime,
   fullName,
@@ -26,6 +26,7 @@ export function PatientDetail() {
   const [printError, setPrintError] = useState<string | null>(null);
   const [printSelecting, setPrintSelecting] = useState(false);
   const [selectedConsultationIds, setSelectedConsultationIds] = useState<string[]>([]);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -117,7 +118,8 @@ export function PatientDetail() {
   if (error) return <p className="text-danger">{error}</p>;
   if (!patient) return <p>No encontramos este paciente.</p>;
 
-  const age = ageFromBirthDate(patient.birth_date);
+  const age = formatAge(patient.birth_date);
+  const photoUrl = patientPhotoUrl(patient.photo_path);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -125,12 +127,22 @@ export function PatientDetail() {
         <BackLink to="/">← Pacientes</BackLink>
         <div className="mt-4 flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
           <div className="flex min-w-0 items-start gap-4">
-            {patientPhotoUrl(patient.photo_path) ? (
-              <img
-                src={patientPhotoUrl(patient.photo_path)!}
-                alt={`Foto de ${patient.first_name}`}
-                className="h-16 w-16 shrink-0 rounded-2xl object-cover sm:h-20 sm:w-20"
-              />
+            {photoUrl ? (
+              <div className="relative h-16 w-16 shrink-0 sm:h-20 sm:w-20">
+                <img
+                  src={photoUrl}
+                  alt={`Foto de ${patient.first_name}`}
+                  className="h-full w-full rounded-2xl object-cover"
+                />
+                <button
+                  type="button"
+                  className="absolute inset-0 flex items-end justify-center rounded-2xl bg-gradient-to-t from-black/55 via-black/10 to-transparent pb-1.5 text-[10px] font-semibold uppercase tracking-wide text-white transition hover:from-black/70"
+                  onClick={() => setPhotoOpen(true)}
+                  aria-label="Ampliar foto del paciente"
+                >
+                  Ampliar
+                </button>
+              </div>
             ) : null}
             <div className="min-w-0">
               <h1 className="font-display text-4xl">
@@ -143,7 +155,7 @@ export function PatientDetail() {
                 <span aria-hidden="true">·</span>
                 <span>{sexLabel(patient.sex)}</span>
                 <span aria-hidden="true">·</span>
-                <span>{age != null ? `${age} años` : "Edad no informada"}</span>
+                <span>{age ?? "Edad no informada"}</span>
                 <span aria-hidden="true">·</span>
                 <span>{formatDate(patient.birth_date)}</span>
               </p>
@@ -279,6 +291,34 @@ export function PatientDetail() {
           })}
         </div>
       </aside>
+
+      {photoOpen && photoUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-ink/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Foto ampliada del paciente"
+          onClick={() => setPhotoOpen(false)}
+        >
+          <div
+            className="relative max-h-[90vh] max-w-3xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <img
+              src={photoUrl}
+              alt={`Foto ampliada de ${patient.first_name}`}
+              className="max-h-[85vh] w-auto max-w-full rounded-2xl object-contain shadow-2xl"
+            />
+            <button
+              type="button"
+              className="btn-primary absolute top-3 right-3"
+              onClick={() => setPhotoOpen(false)}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

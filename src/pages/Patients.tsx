@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import type { Patient } from "../lib/types";
-import { ageFromBirthDate, formatDate, fullName } from "../lib/format";
+import { formatAge, formatDate, fullName } from "../lib/format";
 
 export function Patients() {
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -84,7 +84,7 @@ export function Patients() {
 
       <div className="grid gap-4">
         {filtered.map((patient) => {
-          const age = ageFromBirthDate(patient.birth_date);
+          const age = formatAge(patient.birth_date);
           return (
             <Link
               key={patient.id}
@@ -97,7 +97,7 @@ export function Patients() {
                 </h2>
                 <p className="mt-1 text-sm text-muted">
                   {patient.document_type} {patient.document_number}
-                  {age != null ? ` · ${age} años` : ""}
+                  {age != null ? ` · ${age}` : ""}
                   {patient.insurance ? ` · ${patient.insurance}` : ""}
                 </p>
               </div>

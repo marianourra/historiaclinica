@@ -7,8 +7,8 @@ import {
   vitalFieldsFor,
 } from "./consultations";
 import {
-  ageFromBirthDate,
   bodyMassIndex,
+  formatAge,
   formatDate,
   formatDateTime,
   fullName,
@@ -97,7 +97,7 @@ function consultationBlock(consultation: Consultation, patient: Patient) {
 }
 
 export function printClinicalHistory(patient: Patient, consultations: Consultation[]) {
-  const age = ageFromBirthDate(patient.birth_date);
+  const age = formatAge(patient.birth_date);
   const chronological = [...consultations].sort(
     (a, b) => new Date(a.consultation_date).getTime() - new Date(b.consultation_date).getTime(),
   );
@@ -160,7 +160,7 @@ export function printClinicalHistory(patient: Patient, consultations: Consultati
         <p class="meta">
           ${escapeHtml(patient.document_type)} ${escapeHtml(patient.document_number)}
           · ${escapeHtml(sexLabel(patient.sex))}
-          · ${age != null ? `${age} años` : "Edad no informada"}
+          · ${age ?? "Edad no informada"}
           · ${escapeHtml(formatDate(patient.birth_date))}
         </p>
       </div>

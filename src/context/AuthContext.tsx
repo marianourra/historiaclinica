@@ -3,6 +3,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -14,7 +15,10 @@ type AuthContextValue = {
   session: Session | null;
   user: User | null;
   profile: Profile | null;
+  /** True until the initial session lookup finishes. */
   loading: boolean;
+  /** True only while the first profile fetch for the current user is in flight. */
+  profileLoading: boolean;
   signIn: (identifier: string, password: string) => Promise<void>;
   signUp: (payload: {
     email: string;
@@ -35,47 +39,79 @@ async function resolveEmail(identifier: string) {
     p_identifier: trimmed,
   });
   if (error) throw error;
-  if (!data) throw new Error("No encontramos un médico con ese usuario.");
+  if (!data) throw new Error("No encontramos un usuario con ese nombre.");
   return data as string;
+}
+
+function normalizeProfile(data: Profile | null): Profile | null {
+  if (!data) return null;
+  return {
+    ...data,
+    role: data.role === "paciente" ? "paciente" : "medico",
+    patient_id: data.patient_id ?? null,
+    is_admin: Boolean(data.is_admin),
+  };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const profileUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    async function loadProfile(userId: string) {
-      const { data } = await supabase
-        .from("profiles")
-        .select("id, full_name, username, specialty, license_number, is_admin")
-        .eq("id", userId)
-        .maybeSingle();
-      if (active) setProfile((data as Profile | null) ?? null);
+    async function loadProfile(userId: string, opts?: { quiet?: boolean }) {
+      const quiet = opts?.quiet || profileUserIdRef.current === userId;
+      if (!quiet) setProfileLoading(true);
+      try {
+        const { data } = await supabase
+          .from("profiles")
+          .select(
+            "id, full_name, username, specialty, license_number, is_admin, role, patient_id",
+          )
+          .eq("id", userId)
+          .maybeSingle();
+        if (!active) return;
+        profileUserIdRef.current = userId;
+        setProfile(normalizeProfile(data as Profile | null));
+      } finally {
+        if (active) setProfileLoading(false);
+      }
     }
 
     supabase.auth.getSession().then(({ data }) => {
       if (!active) return;
       setSession(data.session);
+      setLoading(false);
       if (data.session?.user.id) {
-        loadProfile(data.session.user.id).finally(() => {
-          if (active) setLoading(false);
-        });
+        void loadProfile(data.session.user.id);
       } else {
-        setLoading(false);
+        profileUserIdRef.current = null;
+        setProfile(null);
+        setProfileLoading(false);
       }
     });
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
+      (event, nextSession) => {
         setSession(nextSession);
-        if (nextSession?.user.id) {
-          loadProfile(nextSession.user.id);
-        } else {
-          setProfile(null);
-        }
+        // Never await Supabase calls directly inside this callback (auth deadlock).
+        queueMicrotask(() => {
+          if (!active) return;
+          if (!nextSession?.user.id) {
+            profileUserIdRef.current = null;
+            setProfile(null);
+            setProfileLoading(false);
+            return;
+          }
+          const sameUser = profileUserIdRef.current === nextSession.user.id;
+          // Token refresh / same user: refresh profile quietly if needed.
+          if (event === "TOKEN_REFRESHED" && sameUser) return;
+          void loadProfile(nextSession.user.id, { quiet: sameUser });
+        });
       },
     );
 
@@ -91,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: session?.user ?? null,
       profile,
       loading,
+      profileLoading,
       signIn: async (identifier, password) => {
         const email = await resolveEmail(identifier);
         const { error } = await supabase.auth.signInWithPassword({
@@ -118,7 +155,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (error) throw error;
       },
     }),
-    [loading, profile, session],
+    [loading, profile, profileLoading, session],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
