@@ -325,18 +325,20 @@ export function Agenda() {
           <h1 className="font-display mt-1 text-4xl">Turnos</h1>
           <p className="mt-2 text-sm capitalize text-muted">{dayLabel}</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <input
-            className="field w-auto"
-            type="date"
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
-            aria-label="Fecha de la agenda"
-          />
-          <button type="button" className="btn-primary" onClick={openCreate}>
-            Asignar turno
-          </button>
-        </div>
+        {!showForm && (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              className="field w-auto"
+              type="date"
+              value={day}
+              onChange={(e) => setDay(e.target.value)}
+              aria-label="Fecha de la agenda"
+            />
+            <button type="button" className="btn-primary" onClick={openCreate}>
+              Asignar turno
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
