@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { useAuth } from "../context/AuthContext";
@@ -15,6 +15,58 @@ function errorMessage(err: unknown, fallback: string) {
     if (message) return message;
   }
   return fallback;
+}
+
+function AppointmentRow({
+  row,
+  showCancel,
+  pending,
+  onCancel,
+}: {
+  row: Appointment;
+  showCancel?: boolean;
+  pending?: boolean;
+  onCancel?: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
+      <div>
+        <p className="font-semibold">
+          {formatDateTime(row.starts_at)}
+          <span className="ml-2 rounded-full bg-sage px-2 py-0.5 text-xs font-semibold text-teal-dark">
+            {appointmentStatusLabel(row.status)}
+          </span>
+        </p>
+        <p className="mt-1 text-sm">
+          {row.doctor?.full_name || "Médico"}
+          {row.doctor?.specialty ? ` · ${row.doctor.specialty}` : ""}
+        </p>
+        <p className="mt-1 text-sm text-muted">
+          {appointmentTypeLabel(row.appointment_type)}
+          {" · "}
+          {new Intl.DateTimeFormat("es-AR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date(row.starts_at))}
+          {" – "}
+          {new Intl.DateTimeFormat("es-AR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date(row.ends_at))}
+        </p>
+      </div>
+      {showCancel && onCancel && (
+        <button
+          type="button"
+          className="btn-ghost text-danger"
+          disabled={pending}
+          onClick={onCancel}
+        >
+          Cancelar turno
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function PatientPortalAppointments() {
@@ -66,6 +118,22 @@ export function PatientPortalAppointments() {
     };
   }, [profile?.patient_id]);
 
+  const { pendingRows, historyRows } = useMemo(() => {
+    const pendingList = rows
+      .filter((row) => row.status === "scheduled")
+      .sort(
+        (a, b) =>
+          new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime(),
+      );
+    const historyList = rows
+      .filter((row) => row.status !== "scheduled")
+      .sort(
+        (a, b) =>
+          new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime(),
+      );
+    return { pendingRows: pendingList, historyRows: historyList };
+  }, [rows]);
+
   async function confirmCancel() {
     if (!cancelTarget) return;
     const row = cancelTarget;
@@ -97,7 +165,7 @@ export function PatientPortalAppointments() {
           </p>
           <h1 className="font-display mt-1 text-4xl">Mis turnos</h1>
           <p className="mt-2 text-sm text-muted">
-            Consultá el estado de tus citas o cancelá si no podés asistir.
+            Revisá tus turnos pendientes o pedí uno nuevo.
           </p>
         </div>
         <Link to="/portal/turnos/nuevo" className="btn-primary">
@@ -111,68 +179,62 @@ export function PatientPortalAppointments() {
         </p>
       )}
       {error && <p className="mb-4 text-sm text-danger">{error}</p>}
+
       {loading ? (
         <p className="text-muted">Cargando turnos...</p>
       ) : (
-        <section className="card overflow-hidden">
-          <div className="divide-y divide-line">
-            {rows.length === 0 && (
-              <p className="px-5 py-8 text-sm text-muted">
-                Todavía no tenés turnos agendados.{" "}
-                <Link to="/portal/turnos/nuevo" className="text-teal underline">
-                  Pedí el primero
-                </Link>
-                .
-              </p>
-            )}
-            {rows.map((row) => (
-              <div
-                key={row.id}
-                className="flex flex-wrap items-start justify-between gap-3 px-5 py-4"
-              >
-                <div>
-                  <p className="font-semibold">
-                    {formatDateTime(row.starts_at)}
-                    <span className="ml-2 rounded-full bg-sage px-2 py-0.5 text-xs font-semibold text-teal-dark">
-                      {appointmentStatusLabel(row.status)}
-                    </span>
+        <>
+          <section className="card overflow-hidden">
+            <div className="border-b border-line px-5 py-4">
+              <h2 className="font-display text-xl">Turnos pendientes</h2>
+            </div>
+            <div className="divide-y divide-line">
+              {pendingRows.length === 0 ? (
+                <p className="px-5 py-8 text-sm text-muted">
+                  No tenés turnos pendientes agendados actualmente.{" "}
+                  <Link
+                    to="/portal/turnos/nuevo"
+                    className="font-semibold text-teal underline underline-offset-2"
+                  >
+                    Pedir turno
+                  </Link>
+                </p>
+              ) : (
+                pendingRows.map((row) => (
+                  <AppointmentRow
+                    key={row.id}
+                    row={row}
+                    showCancel={
+                      new Date(row.starts_at).getTime() > Date.now()
+                    }
+                    pending={pending}
+                    onCancel={() => {
+                      setError(null);
+                      setCancelTarget(row);
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </section>
+
+          <section className="mt-8">
+            <h2 className="font-display mb-3 text-2xl">Historial de turnos</h2>
+            <div className="card overflow-hidden">
+              <div className="divide-y divide-line">
+                {historyRows.length === 0 ? (
+                  <p className="px-5 py-8 text-sm text-muted">
+                    Todavía no hay turnos atendidos o cancelados.
                   </p>
-                  <p className="mt-1 text-sm">
-                    {row.doctor?.full_name || "Médico"}
-                    {row.doctor?.specialty ? ` · ${row.doctor.specialty}` : ""}
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                    {appointmentTypeLabel(row.appointment_type)}
-                    {" · "}
-                    {new Intl.DateTimeFormat("es-AR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(new Date(row.starts_at))}
-                    {" – "}
-                    {new Intl.DateTimeFormat("es-AR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(new Date(row.ends_at))}
-                  </p>
-                </div>
-                {row.status === "scheduled" &&
-                  new Date(row.starts_at).getTime() > Date.now() && (
-                    <button
-                      type="button"
-                      className="btn-ghost text-danger"
-                      disabled={pending}
-                      onClick={() => {
-                        setError(null);
-                        setCancelTarget(row);
-                      }}
-                    >
-                      Cancelar turno
-                    </button>
-                  )}
+                ) : (
+                  historyRows.map((row) => (
+                    <AppointmentRow key={row.id} row={row} />
+                  ))
+                )}
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          </section>
+        </>
       )}
 
       <ConfirmDialog
